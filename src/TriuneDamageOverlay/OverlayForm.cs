@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using TriuneDamageOverlay.Core;
 
@@ -13,6 +14,8 @@ internal sealed class OverlayForm : Form
     private readonly System.Windows.Forms.Timer _renderTimer = new() { Interval = 16 };
     private readonly AppSettings _settings;
 
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool TextEnabled { get; set; } = true;
 
     protected override bool ShowWithoutActivation => true;

@@ -1,4 +1,4 @@
-# TRIUNE Damage Overlay v1.3
+# TRIUNE Damage Overlay v1.4
 
 A lightweight Windows overlay that watches one EverQuest character log and displays only damage attributable to that character as rising, fading combat text.
 
@@ -43,7 +43,7 @@ The app starts reading at the end of the selected log so old fights are never re
 
 ## Build from source
 
-Requirements: Windows and the .NET 6 SDK.
+Requirements: Windows and the .NET 10 SDK.
 
 ```powershell
 dotnet build src/TriuneDamageOverlay/TriuneDamageOverlay.csproj -c Release
