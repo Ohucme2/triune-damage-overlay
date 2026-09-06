@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+work/
+outputs/
+*.user
+*.suo
+*.zip
+
