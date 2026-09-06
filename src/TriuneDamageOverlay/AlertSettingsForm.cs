@@ -12,6 +12,8 @@ internal sealed class AlertSettingsForm : Form
     private readonly NumericUpDown _cooldown = new() { Minimum = 0, Maximum = 60, Increment = 0.5M, DecimalPlaces = 1, Width = 80 };
     private readonly Button _color = new() { Text = "Choose color…", AutoSize = true };
     private readonly CheckBox _enabled = new() { Text = "Enable combat alerts", AutoSize = true };
+    private readonly TrackBar _alertSize = new() { Minimum = 40, Maximum = 200, TickFrequency = 20, Width = 280 };
+    private readonly Label _alertSizeValue = new() { AutoSize = true, Padding = new Padding(4, 6, 0, 0) };
     private Color _chosenColor = Color.Red;
 
     public AlertSettingsForm(AppSettings settings, OverlayForm overlay)
@@ -20,14 +22,22 @@ internal sealed class AlertSettingsForm : Form
         _overlay = overlay;
         Text = "Combat Alerts · TRIUNE v" + AppInfo.Version;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(650, 440);
-        MinimumSize = new Size(650, 440);
+        ClientSize = new Size(650, 520);
+        MinimumSize = new Size(650, 520);
         BackColor = Color.FromArgb(25, 27, 34);
         ForeColor = Color.WhiteSmoke;
         Font = new Font("Segoe UI", 10);
 
         _enabled.Checked = settings.CombatAlertsEnabled;
         _enabled.CheckedChanged += (_, _) => { settings.CombatAlertsEnabled = _enabled.Checked; settings.Save(); };
+        _alertSize.Value = Math.Clamp(settings.CombatAlertScalePercent, _alertSize.Minimum, _alertSize.Maximum);
+        UpdateAlertSizeLabel();
+        _alertSize.ValueChanged += (_, _) =>
+        {
+            settings.CombatAlertScalePercent = _alertSize.Value;
+            UpdateAlertSizeLabel();
+            settings.Save();
+        };
         _rules.SelectedIndexChanged += (_, _) => LoadSelected();
         _rules.ItemCheck += (_, e) =>
         {
@@ -85,13 +95,20 @@ internal sealed class AlertSettingsForm : Form
         });
         right.Controls.Add(editor);
 
+        var sizeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 0, 0, 2) };
+        sizeRow.Controls.Add(new Label { Text = "Alert size", AutoSize = true, Padding = new Padding(0, 6, 4, 0) });
+        sizeRow.Controls.Add(_alertSize);
+        sizeRow.Controls.Add(_alertSizeValue);
+        sizeRow.Controls.Add(new Label { Text = "40% subtle  →  200% BLAMO!", AutoSize = true, ForeColor = Color.Gainsboro, Padding = new Padding(8, 6, 0, 0) });
+
         var columns = new TableLayoutPanel { ColumnCount = 2, Dock = DockStyle.Fill, Padding = new Padding(20) };
         columns.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
         columns.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         columns.Controls.Add(left, 0, 0);
         columns.Controls.Add(right, 1, 0);
 
-        var root = new TableLayoutPanel { RowCount = 3, Dock = DockStyle.Fill };
+        var root = new TableLayoutPanel { RowCount = 4, Dock = DockStyle.Fill };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -105,7 +122,8 @@ internal sealed class AlertSettingsForm : Form
         }, 0, 0);
         root.Controls.Add(_enabled, 0, 1);
         _enabled.Margin = new Padding(23, 8, 0, 4);
-        root.Controls.Add(columns, 0, 2);
+        root.Controls.Add(sizeRow, 0, 2);
+        root.Controls.Add(columns, 0, 3);
         Controls.Add(root);
     }
 
@@ -209,4 +227,6 @@ internal sealed class AlertSettingsForm : Form
         _color.BackColor = _chosenColor;
         _color.ForeColor = _chosenColor.GetBrightness() < .45f ? Color.White : Color.Black;
     }
+
+    private void UpdateAlertSizeLabel() => _alertSizeValue.Text = _alertSize.Value + "%";
 }

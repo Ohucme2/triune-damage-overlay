@@ -13,6 +13,7 @@ internal sealed class AppSettings
     public int LifetimeMilliseconds { get; set; } = 1800;
     public int ScrollPixelsPerSecond { get; set; } = 70;
     public bool CombatAlertsEnabled { get; set; } = true;
+    public int CombatAlertScalePercent { get; set; } = 100;
     public List<AlertRuleSettings> AlertRules { get; set; } = AlertRuleSettings.Defaults();
 
     private static string SettingsPath => Path.Combine(

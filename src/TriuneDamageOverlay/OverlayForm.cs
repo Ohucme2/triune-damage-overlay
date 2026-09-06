@@ -108,7 +108,12 @@ internal sealed class OverlayForm : Form
 
     private void DrawCombatAlerts(Graphics graphics, DateTime now)
     {
-        using var alertFont = new Font("Segoe UI", Math.Max(_settings.FontSize + 10, 38), FontStyle.Bold, GraphicsUnit.Pixel);
+        var scale = Math.Clamp(_settings.CombatAlertScalePercent, 40, 200) / 100f;
+        var alertFontSize = Math.Max(_settings.FontSize + 10, 38) * scale;
+        var horizontalPadding = 14 * scale;
+        var verticalPadding = 7 * scale;
+        var rowGap = 18 * scale;
+        using var alertFont = new Font("Segoe UI", alertFontSize, FontStyle.Bold, GraphicsUnit.Pixel);
         for (var index = 0; index < _alerts.Count; index++)
         {
             var alert = _alerts[index];
@@ -119,11 +124,11 @@ internal sealed class OverlayForm : Form
             var rowsAboveNewest = _alerts.Count - 1 - index;
             var size = graphics.MeasureString(alert.Text, alertFont);
             var x = _settings.AnchorX - Bounds.Left - size.Width / 2;
-            var y = _settings.AnchorY - Bounds.Top - 150 - rowsAboveNewest * (alertFont.Height + 18);
-            var box = new RectangleF(x - 14, y - 7, size.Width + 28, size.Height + 14);
+            var y = _settings.AnchorY - Bounds.Top - 150 - rowsAboveNewest * (alertFont.Height + rowGap);
+            var box = new RectangleF(x - horizontalPadding, y - verticalPadding, size.Width + horizontalPadding * 2, size.Height + verticalPadding * 2);
 
             using var background = new SolidBrush(Color.FromArgb((int)(225 * (1 - fadeProgress)), 20, 20, 24));
-            using var border = new Pen(Color.FromArgb(alpha, alert.Color.R, alert.Color.G, alert.Color.B), 3);
+            using var border = new Pen(Color.FromArgb(alpha, alert.Color.R, alert.Color.G, alert.Color.B), Math.Max(2, 3 * scale));
             using var textBrush = new SolidBrush(Color.FromArgb(alpha, alert.Color.R, alert.Color.G, alert.Color.B));
             graphics.FillRectangle(background, box);
             graphics.DrawRectangle(border, box.X, box.Y, box.Width, box.Height);
