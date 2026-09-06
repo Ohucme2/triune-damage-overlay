@@ -1,0 +1,14 @@
+TRIUNE Damage Overlay v1.5
+
+1. Double-click TriuneDamageOverlay.exe.
+2. Choose your EverQuest log file.
+3. Make sure the displayed character name matches the character on that client.
+4. Click Combat alerts... to enable, edit, test, or add special-ability alerts.
+
+Built-in alerts: Rampage, Enrage, and Flurry.
+Enemy Begins Casting is included but disabled by default.
+
+The overlay only displays damage lines belonging to the selected client's character.
+Combat alerts read system/emote-style mob messages; player chat quoting an alert phrase is ignored.
+
+The application is self-contained. No separate .NET installation is required.

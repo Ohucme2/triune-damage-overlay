@@ -13,6 +13,7 @@ internal sealed class LogTailer : IDisposable
     private EverQuestDamageParser _parser = new(string.Empty);
 
     public event Action<DamageEvent>? Damage;
+    public event Action<string>? LineRead;
     public event Action<string>? Status;
     public string CharacterName { get; private set; } = string.Empty;
     public bool Running => _timer.Enabled;
@@ -78,6 +79,7 @@ internal sealed class LogTailer : IDisposable
         _partial = lines[^1];
         for (var i = 0; i < lines.Length - 1; i++)
         {
+            LineRead?.Invoke(lines[i]);
             if (_parser.TryParse(lines[i], out var damage) && damage is not null)
                 Damage?.Invoke(damage);
         }

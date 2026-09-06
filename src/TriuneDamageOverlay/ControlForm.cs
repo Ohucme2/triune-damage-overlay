@@ -15,6 +15,7 @@ internal sealed class ControlForm : Form
     private readonly OverlayForm _overlay;
     private readonly HandleForm _handle;
     private readonly LogTailer _tailer = new();
+    private readonly CombatAlertEngine _combatAlerts;
     private readonly NotifyIcon _tray;
     private readonly TextBox _logPath = new() { ReadOnly = true };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Color.Silver };
@@ -23,6 +24,7 @@ internal sealed class ControlForm : Form
     private readonly Button _pauseButton = new() { Text = "Pause floating text", AutoSize = true };
     private bool _reallyExit;
     private bool _hotkeyRegistered;
+    private AlertSettingsForm? _alertSettingsForm;
 
     public ControlForm()
     {
@@ -35,6 +37,7 @@ internal sealed class ControlForm : Form
         Font = new Font("Segoe UI", 10);
 
         _overlay = new OverlayForm(_settings);
+        _combatAlerts = new CombatAlertEngine(_settings, _overlay);
         _handle = new HandleForm(_settings);
         _handle.ToggleRequested += ToggleControlWindow;
         _handle.PositionChanged += () => _settings.Save();
@@ -50,6 +53,7 @@ internal sealed class ControlForm : Form
 
         BuildControls();
         _tailer.Damage += damage => _overlay.AddDamage(damage);
+        _tailer.LineRead += _combatAlerts.ProcessLine;
         _tailer.Status += text => _status.Text = text;
 
         Load += (_, _) =>
@@ -97,6 +101,8 @@ internal sealed class ControlForm : Form
         };
         var hide = new Button { Text = "Hide this window", AutoSize = true };
         hide.Click += (_, _) => Hide();
+        var alerts = new Button { Text = "Combat alerts…", AutoSize = true };
+        alerts.Click += (_, _) => OpenCombatAlerts();
 
         var showAbility = new CheckBox { Text = "Show attack/spell name", AutoSize = true, Checked = _settings.ShowAbility };
         showAbility.CheckedChanged += (_, _) => { _settings.ShowAbility = showAbility.Checked; _settings.Save(); };
@@ -132,8 +138,8 @@ internal sealed class ControlForm : Form
         var logRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         logRow.Controls.Add(_logPath);
         logRow.Controls.Add(browse);
-        var actionRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        actionRow.Controls.AddRange(new Control[] { _watchButton, _pauseButton, test, hide });
+        var actionRow = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(580, 0) };
+        actionRow.Controls.AddRange(new Control[] { _watchButton, _pauseButton, test, alerts, hide });
         var sizeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         sizeRow.Controls.Add(fontLabel);
         sizeRow.Controls.Add(fontSize);
@@ -177,6 +183,18 @@ internal sealed class ControlForm : Form
         });
         layout.Controls.Add(_status);
         Controls.Add(layout);
+    }
+
+    private void OpenCombatAlerts()
+    {
+        if (_alertSettingsForm is { IsDisposed: false })
+        {
+            _alertSettingsForm.Show();
+            _alertSettingsForm.Activate();
+            return;
+        }
+        _alertSettingsForm = new AlertSettingsForm(_settings, _overlay);
+        _alertSettingsForm.Show(this);
     }
 
     private static FlowLayoutPanel BuildColorLegend()

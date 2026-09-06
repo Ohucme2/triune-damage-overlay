@@ -12,6 +12,8 @@ internal sealed class AppSettings
     public int FontSize { get; set; } = 28;
     public int LifetimeMilliseconds { get; set; } = 1800;
     public int ScrollPixelsPerSecond { get; set; } = 70;
+    public bool CombatAlertsEnabled { get; set; } = true;
+    public List<AlertRuleSettings> AlertRules { get; set; } = AlertRuleSettings.Defaults();
 
     private static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -23,7 +25,14 @@ internal sealed class AppSettings
         try
         {
             if (File.Exists(SettingsPath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsPath)) ?? new AppSettings();
+            {
+                var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsPath)) ?? new AppSettings();
+                loaded.AlertRules ??= AlertRuleSettings.Defaults();
+                foreach (var builtIn in AlertRuleSettings.Defaults())
+                    if (!loaded.AlertRules.Any(x => x.Id.Equals(builtIn.Id, StringComparison.OrdinalIgnoreCase)))
+                        loaded.AlertRules.Add(builtIn);
+                return loaded;
+            }
         }
         catch { }
 

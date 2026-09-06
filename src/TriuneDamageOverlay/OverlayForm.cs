@@ -11,6 +11,7 @@ internal sealed class OverlayForm : Form
     private const int WsExToolWindow = 0x80;
     private const int WsExNoActivate = 0x08000000;
     private readonly List<FloatingDamage> _items = new();
+    private readonly List<FloatingCombatAlert> _alerts = new();
     private readonly System.Windows.Forms.Timer _renderTimer = new() { Interval = 16 };
     private readonly AppSettings _settings;
 
@@ -53,6 +54,13 @@ internal sealed class OverlayForm : Form
         if (_items.Count > 30) _items.RemoveAt(0);
     }
 
+    public void AddCombatAlert(string text, Color color, int durationMilliseconds)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        _alerts.Add(new FloatingCombatAlert(text, color, DateTime.UtcNow, Math.Clamp(durationMilliseconds, 500, 15000)));
+        if (_alerts.Count > 4) _alerts.RemoveAt(0);
+    }
+
     private static string FriendlyAbility(DamageEvent damage) => damage.Kind switch
     {
         DamageKind.Critical => "CRIT!",
@@ -93,12 +101,42 @@ internal sealed class OverlayForm : Form
             e.Graphics.DrawString(item.Text, font, shadow, x + 2, y + 2);
             e.Graphics.DrawString(item.Text, font, brush, x, y);
         }
+
+
+        DrawCombatAlerts(e.Graphics, now);
+    }
+
+    private void DrawCombatAlerts(Graphics graphics, DateTime now)
+    {
+        using var alertFont = new Font("Segoe UI", Math.Max(_settings.FontSize + 10, 38), FontStyle.Bold, GraphicsUnit.Pixel);
+        for (var index = 0; index < _alerts.Count; index++)
+        {
+            var alert = _alerts[index];
+            var age = (now - alert.Created).TotalMilliseconds;
+            var progress = Math.Clamp(age / alert.DurationMilliseconds, 0, 1);
+            var fadeProgress = Math.Clamp((progress - .65) / .35, 0, 1);
+            var alpha = (int)(255 * (1 - fadeProgress));
+            var rowsAboveNewest = _alerts.Count - 1 - index;
+            var size = graphics.MeasureString(alert.Text, alertFont);
+            var x = _settings.AnchorX - Bounds.Left - size.Width / 2;
+            var y = _settings.AnchorY - Bounds.Top - 150 - rowsAboveNewest * (alertFont.Height + 18);
+            var box = new RectangleF(x - 14, y - 7, size.Width + 28, size.Height + 14);
+
+            using var background = new SolidBrush(Color.FromArgb((int)(225 * (1 - fadeProgress)), 20, 20, 24));
+            using var border = new Pen(Color.FromArgb(alpha, alert.Color.R, alert.Color.G, alert.Color.B), 3);
+            using var textBrush = new SolidBrush(Color.FromArgb(alpha, alert.Color.R, alert.Color.G, alert.Color.B));
+            graphics.FillRectangle(background, box);
+            graphics.DrawRectangle(border, box.X, box.Y, box.Width, box.Height);
+            graphics.DrawString(alert.Text, alertFont, textBrush, x, y);
+        }
     }
 
     private void ExpireItems()
     {
         var cutoff = DateTime.UtcNow.AddMilliseconds(-_settings.LifetimeMilliseconds);
         _items.RemoveAll(x => x.Created < cutoff);
+        var now = DateTime.UtcNow;
+        _alerts.RemoveAll(x => (now - x.Created).TotalMilliseconds >= x.DurationMilliseconds);
     }
 
     internal static Color ColorFor(DamageKind kind) => kind switch
@@ -124,4 +162,5 @@ internal sealed class OverlayForm : Form
     }
 
     private sealed record FloatingDamage(string Text, DamageKind Kind, DateTime Created);
+    private sealed record FloatingCombatAlert(string Text, Color Color, DateTime Created, int DurationMilliseconds);
 }

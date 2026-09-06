@@ -24,14 +24,36 @@ var cases = new (string Line, bool ShouldMatch, int Amount, DamageKind? Kind)[]
     ("[Sun Sep 06 12:00:09 2026] Otherplayer tells the group, 'You slash a rat for 444 points of damage.'", false, 0, null),
 };
 
-var failed = 0;
+var parserFailed = 0;
 foreach (var test in cases)
 {
     var matched = parser.TryParse(test.Line, out var damage);
     var pass = matched == test.ShouldMatch && (!matched || (damage!.Amount == test.Amount && damage.Kind == test.Kind));
     Console.WriteLine($"{(pass ? "PASS" : "FAIL")}  {test.Line}");
-    if (!pass) failed++;
+    if (!pass) parserFailed++;
 }
 
-Console.WriteLine($"\n{cases.Length - failed}/{cases.Length} parser checks passed.");
-return failed == 0 ? 0 : 1;
+Console.WriteLine($"\n{cases.Length - parserFailed}/{cases.Length} parser checks passed.");
+
+var alertMatcher = new CombatAlertMatcher();
+var rampage = new CombatAlertRule("rampage", "goes on a RAMPAGE", "RAMPAGE! — {mob}");
+var alertCases = new (string Line, CombatAlertRule Rule, bool ShouldMatch, string ExpectedText)[]
+{
+    ("[Sun Sep 06 12:10:00 2026] Emperor Ssraeshza goes on a RAMPAGE!", rampage, true, "RAMPAGE! — Emperor Ssraeshza"),
+    ("[Sun Sep 06 12:10:01 2026] emperor ssraeshza GOES ON A RAMPAGE!", rampage, true, "RAMPAGE! — emperor ssraeshza"),
+    ("[Sun Sep 06 12:10:02 2026] Ravaloft tells the group, 'Emp Ssra goes on a RAMPAGE!'", rampage, false, ""),
+    ("[Sun Sep 06 12:10:03 2026] You say, 'goes on a RAMPAGE'", rampage, false, ""),
+    ("[Sun Sep 06 12:10:04 2026] A serpent begins to glow with deadly energy.", rampage, false, ""),
+    ("[Sun Sep 06 12:10:05 2026] A serpent begins to glow with deadly energy.", new CombatAlertRule("custom", "begins to glow with deadly energy", "MOVE! — {mob}"), true, "MOVE! — A serpent")
+};
+var alertFailed = 0;
+foreach (var test in alertCases)
+{
+    var matched = alertMatcher.TryMatch(test.Line, test.Rule, out var alert);
+    var pass = matched == test.ShouldMatch && (!matched || alert!.Text == test.ExpectedText);
+    Console.WriteLine($"{(pass ? "PASS" : "FAIL")}  ALERT  {test.Line}");
+    if (!pass) alertFailed++;
+}
+
+Console.WriteLine($"\n{alertCases.Length - alertFailed}/{alertCases.Length} alert checks passed.");
+return parserFailed + alertFailed == 0 ? 0 : 1;
