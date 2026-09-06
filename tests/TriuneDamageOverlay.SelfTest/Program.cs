@@ -56,4 +56,22 @@ foreach (var test in alertCases)
 }
 
 Console.WriteLine($"\n{alertCases.Length - alertFailed}/{alertCases.Length} alert checks passed.");
-return parserFailed + alertFailed == 0 ? 0 : 1;
+
+var sourceFilterCases = new (string Source, string Ignored, bool ShouldIgnore)[]
+{
+    ("Genumos", "Genumos, Zarraxrik", true),
+    ("zarraxrik", "Genumos; Zarraxrik", true),
+    ("Emperor Ssraeshza", "Genumos, Zarraxrik", false),
+    ("A Real Mob", "A Real Mobster", false)
+};
+var sourceFilterFailed = 0;
+foreach (var test in sourceFilterCases)
+{
+    var ignored = CombatAlertSourceFilter.IsIgnored(test.Source, test.Ignored);
+    var pass = ignored == test.ShouldIgnore;
+    Console.WriteLine($"{(pass ? "PASS" : "FAIL")}  SOURCE FILTER  {test.Source}");
+    if (!pass) sourceFilterFailed++;
+}
+
+Console.WriteLine($"\n{sourceFilterCases.Length - sourceFilterFailed}/{sourceFilterCases.Length} source-filter checks passed.");
+return parserFailed + alertFailed + sourceFilterFailed == 0 ? 0 : 1;

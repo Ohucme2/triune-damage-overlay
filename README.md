@@ -1,4 +1,4 @@
-# TRIUNE Damage Overlay v1.6
+# TRIUNE Damage Overlay v1.7
 
 A lightweight Windows overlay that watches one EverQuest character log and displays only damage attributable to that character as rising, fading combat text.
 
@@ -23,9 +23,11 @@ The version number is printed in both the Windows title bar and the main heading
 
 ## Combat alerts
 
-Version 1.6 can turn mob special-ability log messages into large on-screen alerts. Rampage, Enrage, and Flurry presets are included; the general enemy-casting preset is included but disabled by default to avoid noise.
+Version 1.7 can turn mob special-ability log messages into large on-screen alerts. Rampage, Enrage, and Flurry presets are included; the general enemy-casting preset is included but disabled by default to avoid noise.
 
 Open **Combat alerts…** to enable or edit presets, add server-specific trigger phrases, choose alert text and color, scale all alerts from **40% subtle** to **200% BLAMO!**, set an independent duration, set an anti-spam cooldown, or test an alert. Use `{mob}` in the display text to include the text appearing before the trigger phrase.
+
+Use **Ignore friendly names** for boxed characters and pets whose casting or flurry messages look identical to mob messages in the log. Enter exact names separated by commas. The selected log's own character is ignored automatically. Enable the movable orange **ALERT** handle and drag it anywhere to position combat alerts independently from damage text.
 
 Player chat lines are rejected before trigger matching so another player cannot create an alert by quoting a configured phrase. An ability must produce a readable line in that client character's log to be detected.
 

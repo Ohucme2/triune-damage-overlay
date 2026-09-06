@@ -123,8 +123,8 @@ internal sealed class OverlayForm : Form
             var alpha = (int)(255 * (1 - fadeProgress));
             var rowsAboveNewest = _alerts.Count - 1 - index;
             var size = graphics.MeasureString(alert.Text, alertFont);
-            var x = _settings.AnchorX - Bounds.Left - size.Width / 2;
-            var y = _settings.AnchorY - Bounds.Top - 150 - rowsAboveNewest * (alertFont.Height + rowGap);
+            var x = _settings.AlertAnchorX - Bounds.Left - size.Width / 2;
+            var y = _settings.AlertAnchorY - Bounds.Top - rowsAboveNewest * (alertFont.Height + rowGap);
             var box = new RectangleF(x - horizontalPadding, y - verticalPadding, size.Width + horizontalPadding * 2, size.Height + verticalPadding * 2);
 
             using var background = new SolidBrush(Color.FromArgb((int)(225 * (1 - fadeProgress)), 20, 20, 24));

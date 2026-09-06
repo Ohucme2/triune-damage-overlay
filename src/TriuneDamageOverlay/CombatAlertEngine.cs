@@ -8,6 +8,7 @@ internal sealed class CombatAlertEngine
     private readonly OverlayForm _overlay;
     private readonly CombatAlertMatcher _matcher = new();
     private readonly Dictionary<string, DateTime> _lastTriggered = new(StringComparer.OrdinalIgnoreCase);
+    public string ClientCharacterName { get; set; } = string.Empty;
 
     public CombatAlertEngine(AppSettings settings, OverlayForm overlay)
     {
@@ -22,6 +23,8 @@ internal sealed class CombatAlertEngine
         foreach (var setting in _settings.AlertRules.Where(x => x.Enabled))
         {
             if (!_matcher.TryMatch(line, setting.ToRule(), out var match) || match is null) continue;
+            if (match.MobName.Equals(ClientCharacterName, StringComparison.OrdinalIgnoreCase) ||
+                CombatAlertSourceFilter.IsIgnored(match.MobName, _settings.IgnoredCombatAlertSources)) continue;
             if (_lastTriggered.TryGetValue(setting.Id, out var last) &&
                 (now - last).TotalMilliseconds < setting.CooldownMilliseconds) continue;
 

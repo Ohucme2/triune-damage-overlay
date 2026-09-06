@@ -14,6 +14,7 @@ internal sealed class ControlForm : Form
     private readonly AppSettings _settings = AppSettings.Load();
     private readonly OverlayForm _overlay;
     private readonly HandleForm _handle;
+    private readonly AlertHandleForm _alertHandle;
     private readonly LogTailer _tailer = new();
     private readonly CombatAlertEngine _combatAlerts;
     private readonly NotifyIcon _tray;
@@ -41,6 +42,9 @@ internal sealed class ControlForm : Form
         _handle = new HandleForm(_settings);
         _handle.ToggleRequested += ToggleControlWindow;
         _handle.PositionChanged += () => _settings.Save();
+        _alertHandle = new AlertHandleForm(_settings);
+        _alertHandle.ToggleRequested += ToggleControlWindow;
+        _alertHandle.PositionChanged += () => _settings.Save();
 
         _tray = new NotifyIcon
         {
@@ -60,6 +64,7 @@ internal sealed class ControlForm : Form
         {
             _overlay.Show();
             if (_settings.ShowHandle) _handle.Show();
+            if (_settings.ShowAlertHandle) _alertHandle.Show();
             _hotkeyRegistered = RegisterHotKey(Handle, HotkeyId, ModControl | ModShift, VkD);
             _status.Text = _hotkeyRegistered
                 ? "Ready · Ctrl+Shift+D shows or hides this window"
@@ -193,7 +198,7 @@ internal sealed class ControlForm : Form
             _alertSettingsForm.Activate();
             return;
         }
-        _alertSettingsForm = new AlertSettingsForm(_settings, _overlay);
+        _alertSettingsForm = new AlertSettingsForm(_settings, _overlay, _alertHandle);
         _alertSettingsForm.Show(this);
     }
 
@@ -276,6 +281,7 @@ internal sealed class ControlForm : Form
     {
         if (_tailer.Start(_settings.LogPath))
         {
+            _combatAlerts.ClientCharacterName = _tailer.CharacterName;
             _watchButton.Text = "Stop watching";
             _character.Text = $"Character: {_tailer.CharacterName}";
             _character.ForeColor = Color.FromArgb(112, 226, 148);
@@ -324,6 +330,7 @@ internal sealed class ControlForm : Form
         _tray.Dispose();
         _settings.Save();
         _handle.Close();
+        _alertHandle.Close();
         _overlay.Close();
     }
 
