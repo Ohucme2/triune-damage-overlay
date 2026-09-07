@@ -32,13 +32,20 @@ internal sealed class AlertHandleForm : Form
         };
         MouseMove += (_, e) =>
         {
-            if (e.Button != MouseButtons.Left) return;
+            if (e.Button != MouseButtons.Left || _settings.PositionHandlesLocked) return;
             var delta = new Size(Cursor.Position.X - _dragOrigin.X, Cursor.Position.Y - _dragOrigin.Y);
             Location = _formOrigin + delta;
             _settings.AlertAnchorX = Left + Width / 2;
             _settings.AlertAnchorY = Top + Height / 2;
             PositionChanged?.Invoke();
         };
+    }
+
+    public void ApplyProfile()
+    {
+        Location = new Point(_settings.AlertAnchorX - Width / 2, _settings.AlertAnchorY - Height / 2);
+        Cursor = _settings.PositionHandlesLocked ? Cursors.No : Cursors.SizeAll;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)

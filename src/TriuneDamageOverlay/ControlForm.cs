@@ -21,17 +21,24 @@ internal sealed class ControlForm : Form
     private readonly TextBox _logPath = new() { ReadOnly = true };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Color.Silver };
     private readonly Label _character = new() { AutoSize = true, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
+    private readonly ComboBox _profileSelector = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 };
     private readonly Button _watchButton = new() { Text = "Start watching", AutoSize = true };
-    private readonly Button _pauseButton = new() { Text = "Pause floating text", AutoSize = true };
+    private readonly Button _pauseButton = new() { Text = "Pause damage text", AutoSize = true };
+    private readonly CheckBox _showAbility = new() { Text = "Show attack/spell name", AutoSize = true };
+    private readonly CheckBox _showHandle = new() { Text = "Show movable gold damage handle", AutoSize = true };
+    private readonly TrackBar _fontSize = new() { Minimum = 18, Maximum = 52, TickFrequency = 4, Width = 250 };
+    private readonly TrackBar _scrollSpeed = new() { Minimum = 30, Maximum = 160, TickFrequency = 10, Width = 250 };
+    private readonly NumericUpDown _fadeSeconds = new() { DecimalPlaces = 1, Increment = 0.2M, Minimum = 0.8M, Maximum = 8.0M, Width = 70 };
     private bool _reallyExit;
     private bool _hotkeyRegistered;
+    private bool _applyingProfile;
     private AlertSettingsForm? _alertSettingsForm;
 
     public ControlForm()
     {
         Text = AppInfo.DisplayName;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(640, 590);
+        ClientSize = new Size(660, 630);
         MinimumSize = new Size(640, 520);
         BackColor = Color.FromArgb(25, 27, 34);
         ForeColor = Color.WhiteSmoke;
@@ -56,6 +63,7 @@ internal sealed class ControlForm : Form
         _tray.DoubleClick += (_, _) => ToggleControlWindow();
 
         BuildControls();
+        ApplyActiveProfileToUi(false);
         _tailer.Damage += damage => _overlay.AddDamage(damage);
         _tailer.LineRead += _combatAlerts.ProcessLine;
         _tailer.Status += text => _status.Text = text;
@@ -108,52 +116,68 @@ internal sealed class ControlForm : Form
         hide.Click += (_, _) => Hide();
         var alerts = new Button { Text = "Combat alerts…", AutoSize = true };
         alerts.Click += (_, _) => OpenCombatAlerts();
-
-        var showAbility = new CheckBox { Text = "Show attack/spell name", AutoSize = true, Checked = _settings.ShowAbility };
-        showAbility.CheckedChanged += (_, _) => { _settings.ShowAbility = showAbility.Checked; _settings.Save(); };
-        var showHandle = new CheckBox { Text = "Show movable gold handle", AutoSize = true, Checked = _settings.ShowHandle };
-        showHandle.CheckedChanged += (_, _) =>
+        _profileSelector.SelectedIndexChanged += (_, _) =>
         {
-            _settings.ShowHandle = showHandle.Checked;
-            if (showHandle.Checked) _handle.Show(); else _handle.Hide();
+            if (_applyingProfile || _profileSelector.SelectedItem is not CharacterProfileSettings profile) return;
+            SwitchProfile(profile.Key);
+        };
+
+        _showAbility.CheckedChanged += (_, _) =>
+        {
+            if (_applyingProfile) return;
+            _settings.ShowAbility = _showAbility.Checked;
+            _settings.Save();
+        };
+        _showHandle.CheckedChanged += (_, _) =>
+        {
+            if (_applyingProfile) return;
+            _settings.ShowHandle = _showHandle.Checked;
+            if (_showHandle.Checked) _handle.Show(); else _handle.Hide();
             _settings.Save();
         };
 
         var fontLabel = new Label { Text = "Text size", AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
-        var fontSize = new TrackBar { Minimum = 18, Maximum = 52, TickFrequency = 4, Value = Math.Clamp(_settings.FontSize, 18, 52), Width = 250 };
-        fontSize.ValueChanged += (_, _) => { _settings.FontSize = fontSize.Value; _settings.Save(); };
+        _fontSize.ValueChanged += (_, _) =>
+        {
+            if (_applyingProfile) return;
+            _settings.FontSize = _fontSize.Value;
+            _settings.Save();
+        };
 
         var speedLabel = new Label { Text = "Scroll speed", AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
-        var scrollSpeed = new TrackBar { Minimum = 30, Maximum = 160, TickFrequency = 10, Value = Math.Clamp(_settings.ScrollPixelsPerSecond, 30, 160), Width = 250 };
-        scrollSpeed.ValueChanged += (_, _) => { _settings.ScrollPixelsPerSecond = scrollSpeed.Value; _settings.Save(); };
+        _scrollSpeed.ValueChanged += (_, _) =>
+        {
+            if (_applyingProfile) return;
+            _settings.ScrollPixelsPerSecond = _scrollSpeed.Value;
+            _settings.Save();
+        };
 
         var fadeLabel = new Label { Text = "Fade after", AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
-        var fadeSeconds = new NumericUpDown
-        {
-            DecimalPlaces = 1,
-            Increment = 0.2M,
-            Minimum = 0.8M,
-            Maximum = 8.0M,
-            Value = Math.Clamp(_settings.LifetimeMilliseconds / 1000M, 0.8M, 8.0M),
-            Width = 70
-        };
         var secondsLabel = new Label { Text = "seconds per hit", AutoSize = true, Padding = new Padding(0, 6, 0, 0) };
-        fadeSeconds.ValueChanged += (_, _) => { _settings.LifetimeMilliseconds = (int)(fadeSeconds.Value * 1000); _settings.Save(); };
+        _fadeSeconds.ValueChanged += (_, _) =>
+        {
+            if (_applyingProfile) return;
+            _settings.LifetimeMilliseconds = (int)(_fadeSeconds.Value * 1000);
+            _settings.Save();
+        };
 
         var logRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         logRow.Controls.Add(_logPath);
         logRow.Controls.Add(browse);
+        var profileRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
+        profileRow.Controls.Add(new Label { Text = "Saved character profile", AutoSize = true, Padding = new Padding(0, 6, 8, 0) });
+        profileRow.Controls.Add(_profileSelector);
         var actionRow = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(580, 0) };
         actionRow.Controls.AddRange(new Control[] { _watchButton, _pauseButton, test, alerts, hide });
         var sizeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         sizeRow.Controls.Add(fontLabel);
-        sizeRow.Controls.Add(fontSize);
+        sizeRow.Controls.Add(_fontSize);
         var speedRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         speedRow.Controls.Add(speedLabel);
-        speedRow.Controls.Add(scrollSpeed);
+        speedRow.Controls.Add(_scrollSpeed);
         var fadeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
         fadeRow.Controls.Add(fadeLabel);
-        fadeRow.Controls.Add(fadeSeconds);
+        fadeRow.Controls.Add(_fadeSeconds);
         fadeRow.Controls.Add(secondsLabel);
 
         var layout = new FlowLayoutPanel
@@ -167,12 +191,13 @@ internal sealed class ControlForm : Form
         layout.Controls.Add(title);
         layout.Controls.Add(intro);
         layout.SetFlowBreak(intro, true);
+        layout.Controls.Add(profileRow);
         layout.Controls.Add(new Label { Text = "EverQuest log file", AutoSize = true, Padding = new Padding(0, 12, 0, 0) });
         layout.Controls.Add(logRow);
         layout.Controls.Add(_character);
         layout.Controls.Add(actionRow);
-        layout.Controls.Add(showAbility);
-        layout.Controls.Add(showHandle);
+        layout.Controls.Add(_showAbility);
+        layout.Controls.Add(_showHandle);
         layout.Controls.Add(sizeRow);
         layout.Controls.Add(speedRow);
         layout.Controls.Add(fadeRow);
@@ -198,7 +223,7 @@ internal sealed class ControlForm : Form
             _alertSettingsForm.Activate();
             return;
         }
-        _alertSettingsForm = new AlertSettingsForm(_settings, _overlay, _alertHandle);
+        _alertSettingsForm = new AlertSettingsForm(_settings, _overlay, _handle, _alertHandle, _combatAlerts, () => ApplyActiveProfileToUi());
         _alertSettingsForm.Show(this);
     }
 
@@ -256,7 +281,7 @@ internal sealed class ControlForm : Form
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Show / hide controls", null, (_, _) => ToggleControlWindow());
-        menu.Items.Add("Pause / resume floating text", null, (_, _) => ToggleText());
+        menu.Items.Add("Pause / resume damage text", null, (_, _) => ToggleText());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApplication());
         return menu;
@@ -271,9 +296,13 @@ internal sealed class ControlForm : Form
             CheckFileExists = true
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        _settings.LogPath = dialog.FileName;
+        _settings.ActivateLog(dialog.FileName);
+        if (_alertSettingsForm is { IsDisposed: false }) _alertSettingsForm.Close();
+        _alertSettingsForm = null;
+        _combatAlerts.ResetForProfile();
+        _overlay.ClearAll();
+        ApplyActiveProfileToUi();
         _settings.Save();
-        _logPath.Text = dialog.FileName;
         StartWatching();
     }
 
@@ -283,7 +312,7 @@ internal sealed class ControlForm : Form
         {
             _combatAlerts.ClientCharacterName = _tailer.CharacterName;
             _watchButton.Text = "Stop watching";
-            _character.Text = $"Character: {_tailer.CharacterName}";
+            _character.Text = $"Profile: {_settings.ActiveProfile.DisplayName}  ·  Character: {_tailer.CharacterName}";
             _character.ForeColor = Color.FromArgb(112, 226, 148);
         }
     }
@@ -295,11 +324,59 @@ internal sealed class ControlForm : Form
         _status.Text = "Log watching stopped. Floating text is still ready.";
     }
 
+    private void ApplyActiveProfileToUi(bool updateVisibility = true)
+    {
+        _applyingProfile = true;
+        try
+        {
+            Text = AppInfo.DisplayName + " · " + _settings.ActiveProfile.DisplayName;
+            _character.Text = "Profile: " + _settings.ActiveProfile.DisplayName;
+            _character.ForeColor = Color.Silver;
+            _profileSelector.BeginUpdate();
+            _profileSelector.Items.Clear();
+            foreach (var profile in _settings.Profiles.OrderBy(x => x.DisplayName, StringComparer.OrdinalIgnoreCase))
+                _profileSelector.Items.Add(profile);
+            _profileSelector.DisplayMember = nameof(CharacterProfileSettings.DisplayName);
+            _profileSelector.SelectedItem = _settings.ActiveProfile;
+            _profileSelector.EndUpdate();
+            _logPath.Text = _settings.LogPath;
+            _showAbility.Checked = _settings.ShowAbility;
+            _showHandle.Checked = _settings.ShowHandle;
+            _fontSize.Value = Math.Clamp(_settings.FontSize, _fontSize.Minimum, _fontSize.Maximum);
+            _scrollSpeed.Value = Math.Clamp(_settings.ScrollPixelsPerSecond, _scrollSpeed.Minimum, _scrollSpeed.Maximum);
+            _fadeSeconds.Value = Math.Clamp(_settings.LifetimeMilliseconds / 1000M, _fadeSeconds.Minimum, _fadeSeconds.Maximum);
+            _handle.ApplyProfile();
+            _alertHandle.ApplyProfile();
+            if (updateVisibility)
+            {
+                if (_settings.ShowHandle) _handle.Show(); else _handle.Hide();
+                if (_settings.ShowAlertHandle) _alertHandle.Show(); else _alertHandle.Hide();
+            }
+        }
+        finally
+        {
+            _applyingProfile = false;
+        }
+    }
+
+    private void SwitchProfile(string key)
+    {
+        if (!_settings.ActivateProfile(key)) return;
+        StopWatching();
+        if (_alertSettingsForm is { IsDisposed: false }) _alertSettingsForm.Close();
+        _alertSettingsForm = null;
+        _combatAlerts.ResetForProfile();
+        _overlay.ClearAll();
+        ApplyActiveProfileToUi();
+        _settings.Save();
+        if (File.Exists(_settings.LogPath)) StartWatching();
+    }
+
     private void ToggleText()
     {
         _overlay.TextEnabled = !_overlay.TextEnabled;
-        _pauseButton.Text = _overlay.TextEnabled ? "Pause floating text" : "Resume floating text";
-        _status.Text = _overlay.TextEnabled ? "Floating text resumed" : "Floating text paused";
+        _pauseButton.Text = _overlay.TextEnabled ? "Pause damage text" : "Resume damage text";
+        _status.Text = _overlay.TextEnabled ? "Damage text resumed" : "Damage text paused; combat alerts are unchanged";
     }
 
     private void ToggleControlWindow()

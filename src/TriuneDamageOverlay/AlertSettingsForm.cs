@@ -4,7 +4,10 @@ internal sealed class AlertSettingsForm : Form
 {
     private readonly AppSettings _settings;
     private readonly OverlayForm _overlay;
+    private readonly HandleForm _damageHandle;
     private readonly AlertHandleForm _alertHandle;
+    private readonly CombatAlertEngine _engine;
+    private readonly Action _profileDisplayChanged;
     private readonly CheckedListBox _rules = new() { CheckOnClick = true, Width = 235, Height = 235 };
     private readonly TextBox _name = new() { Width = 270 };
     private readonly TextBox _trigger = new() { Width = 270 };
@@ -16,18 +19,22 @@ internal sealed class AlertSettingsForm : Form
     private readonly TrackBar _alertSize = new() { Minimum = 40, Maximum = 200, TickFrequency = 20, Width = 280 };
     private readonly Label _alertSizeValue = new() { AutoSize = true, Padding = new Padding(4, 6, 0, 0) };
     private readonly CheckBox _showAlertHandle = new() { Text = "Show movable orange ALERT handle", AutoSize = true };
-    private readonly TextBox _ignoredSources = new() { Width = 345 };
+    private readonly CheckBox _lockHandles = new() { Text = "Lock position handles", AutoSize = true };
+    private FriendlySourcesForm? _friendlySourcesForm;
     private Color _chosenColor = Color.Red;
 
-    public AlertSettingsForm(AppSettings settings, OverlayForm overlay, AlertHandleForm alertHandle)
+    public AlertSettingsForm(AppSettings settings, OverlayForm overlay, HandleForm damageHandle, AlertHandleForm alertHandle, CombatAlertEngine engine, Action profileDisplayChanged)
     {
         _settings = settings;
         _overlay = overlay;
+        _damageHandle = damageHandle;
         _alertHandle = alertHandle;
+        _engine = engine;
+        _profileDisplayChanged = profileDisplayChanged;
         Text = "Combat Alerts · TRIUNE v" + AppInfo.Version;
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(700, 600);
-        MinimumSize = new Size(700, 600);
+        ClientSize = new Size(730, 620);
+        MinimumSize = new Size(730, 620);
         BackColor = Color.FromArgb(25, 27, 34);
         ForeColor = Color.WhiteSmoke;
         Font = new Font("Segoe UI", 10);
@@ -48,11 +55,14 @@ internal sealed class AlertSettingsForm : Form
             settings.ShowAlertHandle = _showAlertHandle.Checked;
             if (_showAlertHandle.Checked) _alertHandle.Show(); else _alertHandle.Hide();
             settings.Save();
+            _profileDisplayChanged();
         };
-        _ignoredSources.Text = settings.IgnoredCombatAlertSources;
-        _ignoredSources.TextChanged += (_, _) =>
+        _lockHandles.Checked = settings.PositionHandlesLocked;
+        _lockHandles.CheckedChanged += (_, _) =>
         {
-            settings.IgnoredCombatAlertSources = _ignoredSources.Text;
+            settings.PositionHandlesLocked = _lockHandles.Checked;
+            _damageHandle.ApplyProfile();
+            _alertHandle.ApplyProfile();
             settings.Save();
         };
         _rules.SelectedIndexChanged += (_, _) => LoadSelected();
@@ -68,7 +78,11 @@ internal sealed class AlertSettingsForm : Form
 
         BuildControls();
         ReloadRules();
-        FormClosed += (_, _) => _settings.Save();
+        FormClosed += (_, _) =>
+        {
+            if (_friendlySourcesForm is { IsDisposed: false }) _friendlySourcesForm.Close();
+            _settings.Save();
+        };
     }
 
     private void BuildControls()
@@ -77,10 +91,18 @@ internal sealed class AlertSettingsForm : Form
         var remove = new Button { Text = "Remove", AutoSize = true };
         var save = new Button { Text = "Save changes", AutoSize = true };
         var test = new Button { Text = "Test selected alert", AutoSize = true };
+        var friendlySources = new Button { Text = "Friendly sources and history…", AutoSize = true };
+        var showBothHandles = new Button { Text = "Position both handles", AutoSize = true };
+        var resetPositions = new Button { Text = "Reset positions", AutoSize = true };
+        var previewPositions = new Button { Text = "Preview positions", AutoSize = true };
         add.Click += (_, _) => AddCustom();
         remove.Click += (_, _) => RemoveSelected();
         save.Click += (_, _) => SaveSelected();
         test.Click += (_, _) => TestSelected();
+        friendlySources.Click += (_, _) => OpenFriendlySources();
+        showBothHandles.Click += (_, _) => ShowBothHandles();
+        resetPositions.Click += (_, _) => ResetPositions();
+        previewPositions.Click += (_, _) => PreviewPositions();
 
         var leftButtons = new FlowLayoutPanel { AutoSize = true };
         leftButtons.Controls.AddRange(new Control[] { add, remove });
@@ -120,12 +142,11 @@ internal sealed class AlertSettingsForm : Form
 
         var handleRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 0, 0, 2) };
         handleRow.Controls.Add(_showAlertHandle);
+        handleRow.Controls.Add(_lockHandles);
         handleRow.Controls.Add(new Label { Text = "Drag it anywhere; alerts appear there.", AutoSize = true, ForeColor = Color.Gainsboro, Padding = new Padding(8, 3, 0, 0) });
 
-        var ignoredRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(20, 0, 0, 3) };
-        ignoredRow.Controls.Add(new Label { Text = "Ignore friendly names", AutoSize = true, Padding = new Padding(0, 6, 4, 0) });
-        ignoredRow.Controls.Add(_ignoredSources);
-        ignoredRow.Controls.Add(new Label { Text = "separate with commas", AutoSize = true, ForeColor = Color.Gainsboro, Padding = new Padding(6, 6, 0, 0) });
+        var toolsRow = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(690, 0), Margin = new Padding(20, 0, 0, 3) };
+        toolsRow.Controls.AddRange(new Control[] { friendlySources, showBothHandles, resetPositions, previewPositions });
 
         var columns = new TableLayoutPanel { ColumnCount = 2, Dock = DockStyle.Fill, Padding = new Padding(20) };
         columns.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
@@ -152,7 +173,7 @@ internal sealed class AlertSettingsForm : Form
         _enabled.Margin = new Padding(23, 8, 0, 4);
         root.Controls.Add(sizeRow, 0, 2);
         root.Controls.Add(handleRow, 0, 3);
-        root.Controls.Add(ignoredRow, 0, 4);
+        root.Controls.Add(toolsRow, 0, 4);
         root.Controls.Add(columns, 0, 5);
         Controls.Add(root);
     }
@@ -259,4 +280,46 @@ internal sealed class AlertSettingsForm : Form
     }
 
     private void UpdateAlertSizeLabel() => _alertSizeValue.Text = _alertSize.Value + "%";
+
+    private void OpenFriendlySources()
+    {
+        if (_friendlySourcesForm is { IsDisposed: false })
+        {
+            _friendlySourcesForm.Show();
+            _friendlySourcesForm.Activate();
+            return;
+        }
+        _friendlySourcesForm = new FriendlySourcesForm(_settings, _engine);
+        _friendlySourcesForm.Show(this);
+    }
+
+    private void ShowBothHandles()
+    {
+        _settings.ShowHandle = true;
+        _settings.ShowAlertHandle = true;
+        _settings.PositionHandlesLocked = false;
+        _showAlertHandle.Checked = true;
+        _lockHandles.Checked = false;
+        _damageHandle.ApplyProfile();
+        _alertHandle.ApplyProfile();
+        _damageHandle.Show();
+        _alertHandle.Show();
+        _settings.Save();
+        _profileDisplayChanged();
+    }
+
+    private void ResetPositions()
+    {
+        _settings.ResetPositions();
+        _damageHandle.ApplyProfile();
+        _alertHandle.ApplyProfile();
+        _settings.Save();
+        _profileDisplayChanged();
+        PreviewPositions();
+    }
+
+    private void PreviewPositions()
+    {
+        _overlay.PreviewPositions();
+    }
 }

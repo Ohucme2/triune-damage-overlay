@@ -1,4 +1,4 @@
-# TRIUNE Damage Overlay v1.7
+# TRIUNE Damage Overlay v1.8
 
 A lightweight Windows overlay that watches one EverQuest character log and displays only damage attributable to that character as rising, fading combat text.
 
@@ -19,15 +19,22 @@ The version number is printed in both the Windows title bar and the main heading
 - Independent fade timer for every hit
 - Adjustable text size, scroll speed, and fade duration
 - Movable positioning handle, tray controls, and global **Ctrl+Shift+D** shortcut
+- Saved per-character profiles selected automatically from each log file
 - No injection, game-memory reading, network service, or MacroQuest dependency
 
 ## Combat alerts
 
-Version 1.7 can turn mob special-ability log messages into large on-screen alerts. Rampage, Enrage, and Flurry presets are included; the general enemy-casting preset is included but disabled by default to avoid noise.
+Version 1.8 can turn mob special-ability log messages into large on-screen alerts. Rampage, Enrage, and Flurry presets are included; the general enemy-casting preset is included but disabled by default to avoid noise.
 
 Open **Combat alerts…** to enable or edit presets, add server-specific trigger phrases, choose alert text and color, scale all alerts from **40% subtle** to **200% BLAMO!**, set an independent duration, set an anti-spam cooldown, or test an alert. Use `{mob}` in the display text to include the text appearing before the trigger phrase.
 
-Use **Ignore friendly names** for boxed characters and pets whose casting or flurry messages look identical to mob messages in the log. Enter exact names separated by commas. The selected log's own character is ignored automatically. Enable the movable orange **ALERT** handle and drag it anywhere to position combat alerts independently from damage text.
+Open **Friendly sources and history** after a pet or boxed character produces an event. Select its name and choose **Mark selected friendly**; the filter saves with that character profile. Friendly names can also be entered manually, and **Allow selected** removes a filter. The selected log's own character is ignored automatically.
+
+Alert history shows whether each matched event was displayed or suppressed because it came from the client character, a saved friendly source, or a cooldown. Cooldowns are tracked separately for each source, so one creature cannot hide another creature's warning.
+
+Enable the movable orange **ALERT** handle and drag it anywhere to position combat alerts independently from damage text. Position tools can show both handles, lock them, preview both locations, or reset them safely.
+
+Choosing a different character log creates or activates its saved profile. Damage settings, alert settings, friendly sources, rules, and both screen positions stay separate for each character. Existing v1.7 settings migrate automatically and retain a backup.
 
 Player chat lines are rejected before trigger matching so another player cannot create an alert by quoting a configured phrase. An ability must produce a readable line in that client character's log to be detected.
 
@@ -44,8 +51,9 @@ Player chat lines are rejected before trigger matching so another player cannot 
 2. Run `TriuneDamageOverlay.exe`.
 3. Choose the client's `eqlog_Character_Server.txt` file.
 4. Select **Preview all colors** to verify the display.
-5. Drag the gold handle to position the text.
-6. Double-click the handle or press **Ctrl+Shift+D** to show or hide the controls.
+5. Drag the gold handle to position damage text.
+6. Open **Combat alerts…** for friendly-source filtering and independent alert positioning.
+7. Double-click a handle or press **Ctrl+Shift+D** to show or hide the controls.
 
 Closing or hiding the control window does not stop floating combat text. Use the tray menu to exit completely.
 

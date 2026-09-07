@@ -61,6 +61,20 @@ internal sealed class OverlayForm : Form
         if (_alerts.Count > 4) _alerts.RemoveAt(0);
     }
 
+    public void ClearAll()
+    {
+        _items.Clear();
+        _alerts.Clear();
+        Invalidate();
+    }
+
+    public void PreviewPositions()
+    {
+        _items.Add(new FloatingDamage("12,345  POSITION PREVIEW", DamageKind.Critical, DateTime.UtcNow));
+        AddCombatAlert("ALERT POSITION", Color.FromArgb(255, 126, 42), 3500);
+        Invalidate();
+    }
+
     private static string FriendlyAbility(DamageEvent damage) => damage.Kind switch
     {
         DamageKind.Critical => "CRIT!",

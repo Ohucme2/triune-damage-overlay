@@ -25,13 +25,20 @@ internal sealed class HandleForm : Form
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { _dragOrigin = Cursor.Position; _formOrigin = Location; } };
         MouseMove += (_, e) =>
         {
-            if (e.Button != MouseButtons.Left) return;
+            if (e.Button != MouseButtons.Left || _settings.PositionHandlesLocked) return;
             var delta = new Size(Cursor.Position.X - _dragOrigin.X, Cursor.Position.Y - _dragOrigin.Y);
             Location = _formOrigin + delta;
             _settings.AnchorX = Left + Width / 2;
             _settings.AnchorY = Top + Height / 2;
             PositionChanged?.Invoke();
         };
+    }
+
+    public void ApplyProfile()
+    {
+        Location = new Point(_settings.AnchorX - Width / 2, _settings.AnchorY - Height / 2);
+        Cursor = _settings.PositionHandlesLocked ? Cursors.No : Cursors.SizeAll;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)

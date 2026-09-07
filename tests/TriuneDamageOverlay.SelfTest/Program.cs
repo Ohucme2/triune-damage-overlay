@@ -73,5 +73,27 @@ foreach (var test in sourceFilterCases)
     if (!pass) sourceFilterFailed++;
 }
 
-Console.WriteLine($"\n{sourceFilterCases.Length - sourceFilterFailed}/{sourceFilterCases.Length} source-filter checks passed.");
-return parserFailed + alertFailed + sourceFilterFailed == 0 ? 0 : 1;
+var enumerableFilterPass = CombatAlertSourceFilter.IsIgnored("FriendlyPet", new[] { "BoxOne", "FriendlyPet" });
+Console.WriteLine($"{(enumerableFilterPass ? "PASS" : "FAIL")}  SOURCE FILTER  saved friendly list");
+if (!enumerableFilterPass) sourceFilterFailed++;
+
+Console.WriteLine($"\n{sourceFilterCases.Length + 1 - sourceFilterFailed}/{sourceFilterCases.Length + 1} source-filter checks passed.");
+
+var cooldown = new CombatAlertCooldownTracker();
+var cooldownStart = new DateTime(2026, 9, 6, 12, 20, 0, DateTimeKind.Utc);
+var cooldownChecks = new[]
+{
+    !cooldown.IsCoolingDown("flurry", "FriendlyPet", cooldownStart, 2500),
+    cooldown.IsCoolingDown("flurry", "FriendlyPet", cooldownStart.AddSeconds(1), 2500),
+    !cooldown.IsCoolingDown("flurry", "ActualBoss", cooldownStart.AddSeconds(1), 2500),
+    !cooldown.IsCoolingDown("flurry", "FriendlyPet", cooldownStart.AddSeconds(3), 2500)
+};
+var cooldownFailed = 0;
+for (var index = 0; index < cooldownChecks.Length; index++)
+{
+    Console.WriteLine($"{(cooldownChecks[index] ? "PASS" : "FAIL")}  PER-SOURCE COOLDOWN  {index + 1}");
+    if (!cooldownChecks[index]) cooldownFailed++;
+}
+
+Console.WriteLine($"\n{cooldownChecks.Length - cooldownFailed}/{cooldownChecks.Length} cooldown checks passed.");
+return parserFailed + alertFailed + sourceFilterFailed + cooldownFailed == 0 ? 0 : 1;
